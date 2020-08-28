@@ -20,13 +20,27 @@ exports.getAllTours = async (req, res) => {
       query = query.sort('-createdAt');
     }
 
+    //Field limiting
     if (req.query.fields) {
       const fields = req.query.fields.split(',').join(' ');
       query = query.select(fields);
     } else {
-      query = query.select('__v');
+      query = query.select('-__v');
     }
 
+    //Pagination
+    const page = req.query.page * 1 || 1;
+    const limit = req.query.limit || 100;
+
+    const skip = (page - 1) * limit; // previous page * the number of results in each page 10 for page 1, 20 for page 2
+    query = query.skip(skip).limit(limit);
+
+    if (req.query.page) {
+      const numTours = await Tour.countDocuments();
+
+      if (skip >= numTours) throw new Error('This page does not exist');
+    }
+    // EXECUTE QUERY
     const tours = await query;
 
     res.status(200).json({
